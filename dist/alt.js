@@ -28,6 +28,8 @@ var LIFECYCLE = Symbol("store lifecycle listeners");
 var LISTENERS = Symbol("stores action listeners storage");
 var STATE_CONTAINER = Symbol("the state container");
 
+var GlobalActionsNameRegistry = {};
+
 function formatAsConstant(name) {
   return name.replace(/[a-z]([A-Z])/g, function (i) {
     return "" + i[0] + "_" + i[1].toLowerCase();
@@ -433,7 +435,9 @@ var Alt = (function () {
 
         return Object.keys(actions).reduce(function (obj, action) {
           var constant = formatAsConstant(action);
-          var actionName = Symbol("" + key + "#" + action);
+          var actionId = uid(GlobalActionsNameRegistry, "" + key + "#" + action);
+          GlobalActionsNameRegistry[actionId] = 1;
+          var actionName = Symbol["for"](actionId);
 
           // Wrap the action so we can provide a dispatch method
           var newAction = new ActionCreator(_this6, actionName, actions[action], obj);

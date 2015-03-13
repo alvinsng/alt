@@ -1015,6 +1015,8 @@ var LIFECYCLE = Symbol("store lifecycle listeners");
 var LISTENERS = Symbol("stores action listeners storage");
 var STATE_CONTAINER = Symbol("the state container");
 
+var GlobalActionsNameRegistry = {};
+
 function formatAsConstant(name) {
   return name.replace(/[a-z]([A-Z])/g, function (i) {
     return "" + i[0] + "_" + i[1].toLowerCase();
@@ -1400,7 +1402,9 @@ var Alt = (function () {
 
         return Object.keys(actions).reduce(function (obj, action) {
           var constant = formatAsConstant(action);
-          var actionName = Symbol("" + key + "#" + action);
+          var actionId = uid(GlobalActionsNameRegistry, "" + key + "#" + action);
+          GlobalActionsNameRegistry[actionId] = 1;
+          var actionName = Symbol["for"](actionId);
 
           // Wrap the action so we can provide a dispatch method
           var newAction = new ActionCreator(_this6, actionName, actions[action], obj);
@@ -1595,6 +1599,8 @@ ActionListeners.prototype.removeAllActionListeners = function () {
  */
 module.exports = DispatcherRecorder;
 
+var Symbol = require("es-symbol");
+
 function DispatcherRecorder(alt) {
   this.alt = alt;
   this.events = [];
@@ -1602,9 +1608,9 @@ function DispatcherRecorder(alt) {
 }
 
 /**
- * record(): boolean
  * If recording started you get true, otherwise false since there's a recording
  * in progress.
+ * record(): boolean
  */
 DispatcherRecorder.prototype.record = function () {
   if (this.dispatchToken) {
@@ -1620,6 +1626,7 @@ DispatcherRecorder.prototype.record = function () {
 
 /**
  * Stops the recording in progress.
+ * stop(): undefined
  */
 DispatcherRecorder.prototype.stop = function () {
   this.alt.dispatcher.unregister(this.dispatchToken);
@@ -1628,6 +1635,7 @@ DispatcherRecorder.prototype.stop = function () {
 
 /**
  * Clear all events from memory.
+ * clear(): undefined
  */
 DispatcherRecorder.prototype.clear = function () {
   this.events = [];
@@ -1666,7 +1674,36 @@ DispatcherRecorder.prototype.replay = function (replayTime, done) {
   next();
 };
 
-},{}],15:[function(require,module,exports){
+/**
+ * Serialize all the events so you can pass them around or load them into
+ * a separate recorder.
+ * serializeEvents(): string
+ */
+DispatcherRecorder.prototype.serializeEvents = function () {
+  var events = this.events.map(function (event) {
+    return {
+      action: Symbol.keyFor(event.action),
+      data: event.data
+    };
+  });
+  return JSON.stringify(events);
+};
+
+/**
+ * Load serialized events into the recorder and overwrite the current events
+ * loadEvents(events: string): undefined
+ */
+DispatcherRecorder.prototype.loadEvents = function (events) {
+  var parsedEvents = JSON.parse(events);
+  this.events = parsedEvents.map(function (event) {
+    return {
+      action: Symbol["for"](event.action),
+      data: event.data
+    };
+  });
+};
+
+},{"es-symbol":5}],15:[function(require,module,exports){
 "use strict";
 
 /**
